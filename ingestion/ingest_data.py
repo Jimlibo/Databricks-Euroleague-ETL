@@ -42,9 +42,9 @@ def ingest_data(game_code_start: int = 1):
     comparison_spark = spark.createDataFrame(tables["comparison"])
 
     # store spark dfs to delta lake tables
-    write_delta(box_score_spark, f"{DELTA_SILVER_PATH}_box_score", "game_player_id")
-    write_delta(header_spark, f"{DELTA_SILVER_PATH}_header", "game_id")
-    write_delta(comparison_spark, f"{DELTA_SILVER_PATH}_comparison", "game_id")
+    write_delta(box_score_spark, f"{DELTA_SILVER_PATH}_box_score")
+    write_delta(header_spark, f"{DELTA_SILVER_PATH}_header")
+    write_delta(comparison_spark, f"{DELTA_SILVER_PATH}_comparison")
 
 
 if __name__ == '__main__':
