@@ -1,22 +1,32 @@
 import requests
 import json
 import os
+import pandas as pd
 from time import time
-from config import RAW_PATH
+from pyspark.sql import Row, SparkSession
+from config import RAW_PATH, DELTA_BRONZE_PATH
+from spark_utils import write_delta
 import warnings
 warnings.filterwarnings("ignore")
 
 
 class EuroleagueScrapper:
-    
     def __init__(self, competition, season_codes, euroleague_apis, failed_extractions_limit, game_code_start, datetime_now):
-
+        # initialize api call parameters
         self.competition = competition
         self.season_codes = season_codes
         self.euroleague_apis = euroleague_apis
         self.failed_extractions_limit = failed_extractions_limit
         self.game_code_start = game_code_start
         self.datetime_now = datetime_now
+
+        # initialize lists for api results
+        self.players_df_list = []
+        self.games_df_list = []
+        self.comparison_df_list = []
+
+        # initialize spark session
+        self.spark = SparkSession.getActiveSession()
         
     def implement_scrapping_process(self):
         '''
@@ -28,7 +38,8 @@ class EuroleagueScrapper:
 
         # implement process per season 
         for index, sc in enumerate(self.season_codes):
-
+            # initialize season df rows
+            season_api_rows = {api: [] for api in self.euroleague_apis}
             # initialize basic variable of process
             process_start_time, season_end, meta_data_dict, gc = self.initialize_process(index, sc)
 
@@ -38,7 +49,11 @@ class EuroleagueScrapper:
                 gc += 1 
 
                 # scrap APIs, load data and update info
-                meta_data_dict = self.request_extract_load_update(gc, sc, process_start_time, meta_data_dict)
+                meta_data_dict, api_rows = self.request_extract_load_update(gc, sc, process_start_time, meta_data_dict)
+
+                # update season df rows
+                for api in self.euroleague_apis:
+                    season_api_rows[api].extend(api_rows.get(api, []))
 
                 # save meta_data
                 with open(fr"{RAW_PATH}{self.competition}_json/{sc}/{sc}_meta_data_{self.datetime_now}.json", "w") as output_file:
@@ -47,7 +62,12 @@ class EuroleagueScrapper:
                 # update flag --- the 1st condition is obvious --- the 2nd condition reflects a possible problem with the URLs or a premature end of the season (e.g. covid season E2019)
                 if (meta_data_dict[sc]["number_of_FinalFour_games"] == 4) or (meta_data_dict[sc]["number_of_failed_extractions"] > self.failed_extractions_limit):
                     season_end = True
-        
+
+            # store season data to df
+            for api in self.euroleague_apis:
+                df = self.spark.createDataFrame(season_api_rows[api])
+                write_delta(df, f"{DELTA_BRONZE_PATH}_{api.lower()}")
+
     def initialize_process(self, index, sc):
         
         # initialize timer and flag 
@@ -86,7 +106,9 @@ class EuroleagueScrapper:
         return process_start_time, season_end, meta_data_dict, gc
 
     def request_extract_load_update(self, gc, sc, process_start_time, meta_data_dict):
-                  
+        # initialize the api_rows dictionary
+        api_rows = {api: [] for api in self.euroleague_apis}   
+        # fetch results from each api     
         for api in self.euroleague_apis:
             # HTTP request
             url = f"https://live.euroleague.net/api/{api}?gamecode={str(gc)}&seasoncode={sc}"
@@ -96,17 +118,28 @@ class EuroleagueScrapper:
             try:
                 # extract data
                 response_dict = response.json()
+                # store raw api data to df row
+                row = Row(
+                    season_code=sc,
+                    game_code=gc,
+                    api=api,
+                    ingestion_time=str(self.datetime_now),
+                    raw_json=json.dumps(response_dict)
+                )
+                api_rows[api].append(row)
+                # df = self.spark.createDataFrame([row])
+                # write_delta(df, f"{DELTA_BRONZE_PATH}_{api.lower()}")
 
-                # get useful info from Header API
+                # based on which api was used, handle the response accordingly
                 if api == "Header":
-                    Phase, Round, Date, meta_data_dict = self.get_info_from_header_api(response_dict, meta_data_dict, url, gc, sc, process_start_time)
-
-                # set the filename of the json file
-                json_filename = "_".join([sc, Phase, Round, "{:03d}".format(gc), Date, api])
-
-                # load data
-                with open(fr"{RAW_PATH}{self.competition}_json/{sc}/success/{json_filename}.json", "w") as output_file:
-                    json.dump(response_dict, output_file)
+                    Phase, Round, Date, meta_data_dict = self.get_info_from_header_api(
+                        response_dict, meta_data_dict, url, gc, sc, process_start_time
+                    )
+                    self.process_header(response_dict, sc, gc, Phase, Round)
+                elif api == "Boxscore":
+                    self.process_boxscore(response_dict, sc, gc, Phase, Round, Date)
+                elif api == "Comparison":
+                    self.process_comparison(response_dict, sc, gc, Phase, Round)
 
             except Exception as e:
                 print(e, "--- URL:", url)
@@ -121,7 +154,7 @@ class EuroleagueScrapper:
             meta_data_dict[sc]["time_counter"] = f"{round((time() - process_start_time) / 60, 1)} minutes"
             meta_data_dict[sc]["game_code_counter"] = gc
                     
-        return meta_data_dict
+        return meta_data_dict,  api_rows
     
     def get_info_from_header_api(self, response_dict, meta_data_dict, url, gc, sc, process_start_time):
     
@@ -163,3 +196,189 @@ class EuroleagueScrapper:
               f"GameCode:", "{:03d}".format(gc), " ---  TimeCounter:", round((time() - process_start_time) / 60, 1), "min")
             
         return Phase, Round, Date, meta_data_dict
+    
+    def process_header(self, data, season, gamecode, phase, round_):
+        # create unique game_id
+        game_id = f"{season}_{str(gamecode).zfill(3)}"
+
+        # Teams
+        team_a = data.get("TeamA")
+        team_b = data.get("TeamB")
+        team_id_a = data.get("CodeTeamA")
+        team_id_b = data.get("CodeTeamB")
+        game = f"{team_id_a}-{team_id_b}"
+
+        # Score
+        score_a = data.get("ScoreA")
+        score_b = data.get("ScoreB")
+
+        # Date formatting
+        date_raw = data.get("Date")
+        date = "-".join(date_raw.split("/")[::-1]) if date_raw else None
+
+        # Referees split
+        refs = data.get("Referees", "").split(",")
+        refs = [r.strip() for r in refs] + [None] * 3
+
+        # construct df row from api response
+        row = {
+            "game_id": game_id,
+            "game": game,
+            "date": date,
+            "time": data.get("LocalDate"),
+            "round": int(round_),
+            "phase": phase.upper(),
+            "season_code": season,
+            "score_a": score_a,
+            "score_b": score_b,
+            "team_a": team_a,
+            "team_b": team_b,
+            "team_id_a": team_id_a,
+            "team_id_b": team_id_b,
+            "coach_a": None,
+            "coach_b": None,
+            "game_time": data.get("GameTime"),
+            "remaining_partial_time": data.get("RemainingTime"),
+            "referee_1": refs[0],
+            "referee_2": refs[1],
+            "referee_3": refs[2],
+            "stadium": data.get("Stadium"),
+            "capacity": data.get("Capacity"),
+            "w_id": data.get("WinId"),
+            "fouls_a": data.get("FoulsA"),
+            "fouls_b": data.get("FoulsB"),
+            "timeouts_a": data.get("TimeoutsA"),
+            "timeouts_b": data.get("TimeoutsB"),
+        }
+
+        # 🧠 Quarter scores (from Boxscore usually, but fallback if present)
+        for i in range(1, 5):
+            row[f"score_quarter_{i}_a"] = data.get(f"ScoreQuarter{i}A")
+            row[f"score_quarter_{i}_b"] = data.get(f"ScoreQuarter{i}B")
+
+        # Extra time (initialize as None)
+        for i in range(1, 5):
+            row[f"score_extra_time_{i}_a"] = None
+            row[f"score_extra_time_{i}_b"] = None
+
+        self.games_df_list.append(row)
+
+    def process_comparison(self, data, season, gamecode, phase, round_):
+        # unique game_id
+        game_id = f"{season}_{str(gamecode).zfill(3)}"
+
+        # extract teams
+        team_id_a = data.get("TeamA")
+        team_id_b = data.get("TeamB")
+        game = f"{team_id_a}-{team_id_b}"
+
+        # construct df row from api response
+        row = {
+            "game_id": game_id,
+            "game": game,
+            "round": int(round_),
+            "phase": phase.upper(),
+            "season_code": season,
+            "team_id_a": team_id_a,
+            "team_id_b": team_id_b,
+            "fast_break_points_a": data.get("FastBreakPointsA"),
+            "fast_break_points_b": data.get("FastBreakPointsB"),
+            "turnover_points_a": data.get("TurnoverPointsA"),
+            "turnover_points_b": data.get("TurnoverPointsB"),
+            "second_chance_points_a": data.get("SecondChancePointsA"),
+            "second_chance_points_b": data.get("SecondChancePointsB"),
+            "defensive_rebounds_a": data.get("DefensiveReboundsA"),
+            "offensive_rebounds_a": data.get("OffensiveReboundsA"),
+            "defensive_rebounds_b": data.get("DefensiveReboundsB"),
+            "offensive_rebounds_b": data.get("OffensiveReboundsB"),
+            "turnovers_starters_a": data.get("TurnoversStartersA"),
+            "turnovers_bench_a": data.get("TurnoversBenchA"),
+            "turnovers_starters_b": data.get("TurnoversStartersB"),
+            "turnovers_bench_b": data.get("TurnoversBenchB"),
+            "steals_starters_a": data.get("StealsStartersA"),
+            "steals_bench_a": data.get("StealsBenchA"),
+            "steals_starters_b": data.get("StealsStartersB"),
+            "steals_bench_b": data.get("StealsBenchB"),
+            "assists_starters_a": data.get("AssistsStartersA"),
+            "assists_bench_a": data.get("AssistsBenchA"),
+            "assists_starters_b": data.get("AssistsStartersB"),
+            "assists_bench_b": data.get("AssistsBenchB"),
+            "points_starters_a": data.get("PointsStartersA"),
+            "points_bench_a": data.get("PointsBenchA"),
+            "points_starters_b": data.get("PointsStartersB"),
+            "points_bench_b": data.get("PointsBenchB"),
+            "max_a": data.get("MaxA"),
+            "min_a": data.get("MinA"),
+            "max_b": data.get("MaxB"),
+            "min_b": data.get("MinB"),
+            "max_lead_a": data.get("MaxLeadA"),
+            "max_lead_b": data.get("MaxLeadB"),
+        }
+
+        self.comparison_df_list.append(row)
+
+    def process_boxscore(self, data, season, gamecode, phase, round_, date):
+        # extract teams
+        team_id_a = data["ByQuarter"][0]["Team"]
+        team_id_b = data["ByQuarter"][1]["Team"]
+        game = f"{team_id_a}-{team_id_b}"
+
+        for team_block in data["Stats"]:
+            team_name = team_block["Team"]
+            team_code = team_block["PlayersStats"][0]["Team"]  # e.g. IST / TEL
+
+            # create row for each player, featuring his stats
+            for player in team_block["PlayersStats"]:
+
+                player_id = player["Player_ID"].strip()
+                team_id = player["Team"]
+
+                # unique game_id
+                game_id = f"{season}_{str(gamecode).zfill(3)}"
+
+                # Construct unique game_player_id
+                game_player_id = f"{game_id}_{player_id}"
+
+                row = {
+                    "game_player_id": game_player_id,
+                    "game_id": game_id,
+                    "game": game,
+                    "round": int(round_),
+                    "phase": phase.upper(),
+                    "season_code": season,
+                    "player_id": player_id,
+                    "is_starter": float(player["IsStarter"]),
+                    "is_playing": float(player["IsPlaying"]),
+                    "team_id": team_id,
+                    "dorsal": player["Dorsal"],
+                    "player": player["Player"],
+                    "minutes": None if player["Minutes"] == "DNP" else player["Minutes"],
+                    "points": player["Points"],
+                    "two_points_made": player["FieldGoalsMade2"],
+                    "two_points_attempted": player["FieldGoalsAttempted2"],
+                    "three_points_made": player["FieldGoalsMade3"],
+                    "three_points_attempted": player["FieldGoalsAttempted3"],
+                    "free_throws_made": player["FreeThrowsMade"],
+                    "free_throws_attempted": player["FreeThrowsAttempted"],
+                    "offensive_rebounds": player["OffensiveRebounds"],
+                    "defensive_rebounds": player["DefensiveRebounds"],
+                    "total_rebounds": player["TotalRebounds"],
+                    "assists": player["Assistances"],
+                    "steals": player["Steals"],
+                    "turnovers": player["Turnovers"],
+                    "blocks_favour": player["BlocksFavour"],
+                    "blocks_against": player["BlocksAgainst"],
+                    "fouls_committed": player["FoulsCommited"],
+                    "fouls_received": player["FoulsReceived"],
+                    "valuation": player["Valuation"],
+                    "plus_minus": player["Plusminus"],
+                }
+
+                self.players_df_list.append(row)
+
+    def build_final_tables(self):
+        return {
+            "box_score": pd.DataFrame(self.players_df_list),
+            "header": pd.DataFrame(self.games_df_list),
+            "comparison": pd.DataFrame(self.comparison_df_list),
+        }

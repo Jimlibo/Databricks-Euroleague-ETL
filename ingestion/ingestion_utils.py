@@ -18,6 +18,7 @@ def get_datetime_info():
         
     return datetime_now, year_today
 
+
 class SimpleLogger:
     
     def __init__(self, out1, out2):

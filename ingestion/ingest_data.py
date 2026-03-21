@@ -1,9 +1,14 @@
 import sys 
 import os
-from ingestion_utils import get_datetime_info, SimpleLogger
 from scrapper import EuroleagueScrapper
+from config import DELTA_SILVER_PATH
+from ingestion_utils import get_datetime_info, SimpleLogger
+from spark_utils import init_euroleague_spark_session, write_delta
 import warnings
 warnings.filterwarnings("ignore")
+
+
+spark = init_euroleague_spark_session()
 
 
 def ingest_data(game_code_start: int = 1):
@@ -29,6 +34,17 @@ def ingest_data(game_code_start: int = 1):
         datetime_now=datetime_now,
     )
     euroleague_scrapper.implement_scrapping_process()
+
+    # extract tables and convert them to spark dataframes
+    tables = euroleague_scrapper.build_final_tables()
+    box_score_spark = spark.createDataFrame(tables["players"])
+    header_spark = spark.createDataFrame(tables["games"])
+    comparison_spark = spark.createDataFrame(tables["comparison"])
+
+    # store spark dfs to delta lake tables
+    write_delta(box_score_spark, f"{DELTA_SILVER_PATH}_box_score", "game_player_id")
+    write_delta(header_spark, f"{DELTA_SILVER_PATH}_header", "game_id")
+    write_delta(comparison_spark, f"{DELTA_SILVER_PATH}_comparison", "game_id")
 
 
 if __name__ == '__main__':
