@@ -8,14 +8,14 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-spark = init_euroleague_spark_session()
-
-
 def ingest_data(game_code_start: int = 1):
     """
     Load game data for euroleague games, starting from game with code `game_code_start`
     and ending with the last game of the current season.
     """
+    # initialize spark session
+    spark = init_euroleague_spark_session()
+
     # get datetime info
     datetime_now, year_today = get_datetime_info()
 
@@ -29,7 +29,7 @@ def ingest_data(game_code_start: int = 1):
         competition="euroleague", 
         season_codes=[f"E{year_today}"], 
         euroleague_apis=["Header", "Boxscore", "Comparison"], 
-        failed_extractions_limit=500, 
+        failed_extractions_limit=50, 
         game_code_start=game_code_start, 
         datetime_now=datetime_now,
     )
@@ -37,8 +37,8 @@ def ingest_data(game_code_start: int = 1):
 
     # extract tables and convert them to spark dataframes
     tables = euroleague_scrapper.build_final_tables()
-    box_score_spark = spark.createDataFrame(tables["players"])
-    header_spark = spark.createDataFrame(tables["games"])
+    box_score_spark = spark.createDataFrame(tables["box_score"])
+    header_spark = spark.createDataFrame(tables["header"])
     comparison_spark = spark.createDataFrame(tables["comparison"])
 
     # store spark dfs to delta lake tables
