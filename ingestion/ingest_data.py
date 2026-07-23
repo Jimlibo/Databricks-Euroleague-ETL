@@ -17,6 +17,9 @@ def ingest_data(game_code_start: int | None = None):
     # initialize spark session
     spark = init_euroleague_spark_session()
 
+    # get datetime info
+    datetime_now, year_today = get_datetime_info()
+
     # if game_code_start was not provided, set it to the last game that was ingested
     if game_code_start is None:
         # initialize game_code_start with default value
@@ -26,10 +29,12 @@ def ingest_data(game_code_start: int | None = None):
         if spark.catalog.tableExists(table_name):
             last_game_id = (
                 spark.read.table(table_name)
+                .filter(f"season_code = 'E{year_today}'")
                 .orderBy("game_id", ascending=False)
                 .select("game_id")
                 .first()
             )
+
             if last_game_id is not None:
                 try:
                     game_code_start = int(last_game_id.game_id.split("_")[1]) + 1
@@ -38,9 +43,6 @@ def ingest_data(game_code_start: int | None = None):
                     )
                 except ValueError:
                     game_code_start = 1
-
-    # get datetime info
-    datetime_now, year_today = get_datetime_info()
 
     # create a simple logfile
     if not os.path.exists("simple_logs"):
