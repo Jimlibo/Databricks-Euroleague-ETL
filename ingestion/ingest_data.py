@@ -8,13 +8,36 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-def ingest_data(game_code_start: int = 1):
+def ingest_data(game_code_start: int | None = None):
     """
     Load game data for euroleague games, starting from game with code `game_code_start`
-    and ending with the last game of the current season.
+    and ending with the last game of the current season. If `game_code_start` is not provided,
+    the function will start from the last game that was ingested.
     """
     # initialize spark session
     spark = init_euroleague_spark_session()
+
+    # if game_code_start was not provided, set it to the last game that was ingested
+    if game_code_start is None:
+        # initialize game_code_start with default value
+        game_code_start = 1
+        # find the last game that was ingested
+        table_name = "workspace.euroleague.silver_header"
+        if spark.catalog.tableExists(table_name):
+            last_game_id = (
+                spark.read.table(table_name)
+                .orderBy("date", ascending=False)
+                .select("game_id")
+                .first()
+            )
+            if last_game_id is not None:
+                try:
+                    game_code_start = int(last_game_id.game_id.split("_")[1]) + 1
+                    print(
+                        f"Found last ingested game_id: {last_game_id.game_id} -- starting from game_id: {game_code_start}"
+                    )
+                except ValueError:
+                    game_code_start = 1
 
     # get datetime info
     datetime_now, year_today = get_datetime_info()
