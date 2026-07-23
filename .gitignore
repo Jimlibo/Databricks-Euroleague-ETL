@@ -1,2 +1,5 @@
 # data files
 data/*
+
+# log files
+ingestion/simple_logs
