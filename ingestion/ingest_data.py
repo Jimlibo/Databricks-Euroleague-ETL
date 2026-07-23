@@ -26,7 +26,7 @@ def ingest_data(game_code_start: int | None = None):
         if spark.catalog.tableExists(table_name):
             last_game_id = (
                 spark.read.table(table_name)
-                .orderBy("date", ascending=False)
+                .orderBy("game_id", ascending=False)
                 .select("game_id")
                 .first()
             )
