@@ -21,6 +21,7 @@ def init_euroleague_spark_session():
 def write_delta(table_df, table_name, mode = None):
     """
     Writes the provided `table_df` to `table_name`. Uses 'overwrite' if the table doesn't exist, otherwise uses 'append'.
+    When using 'append', drops duplicates after the final write.
     """
     # determine write mode if not specified
     if not mode:
@@ -37,3 +38,12 @@ def write_delta(table_df, table_name, mode = None):
     # write table
     table_df.write.format("delta").mode(mode).saveAsTable(table_name)
     print(f"Table '{table_name}' written successfully with mode '{mode}'")
+
+    # Drop duplicates after append
+    if mode == "append":
+        spark = table_df.sparkSession
+        df = spark.table(table_name)
+        # Drop duplicates based on all columns
+        df_deduped = df.dropDuplicates()
+        df_deduped.write.format("delta").mode("overwrite").saveAsTable(table_name)
+        print(f"Duplicates dropped from '{table_name}' after append.")
