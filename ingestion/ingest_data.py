@@ -62,9 +62,9 @@ def ingest_data(game_code_start: int | None = None):
 
     # extract tables and convert them to spark dataframes
     tables = euroleague_scrapper.build_final_tables()
-    box_score_spark = spark.createDataFrame(tables["box_score"])
-    header_spark = spark.createDataFrame(tables["header"])
-    comparison_spark = spark.createDataFrame(tables["comparison"])
+    box_score_spark = spark.createDataFrame(tables["box_score"]) if tables["box_score"] is not None else None
+    header_spark = spark.createDataFrame(tables["header"]) if tables["header"] is not None else None
+    comparison_spark = spark.createDataFrame(tables["comparison"]) if tables["comparison"] is not None else None
 
     # store spark dfs to delta lake tables
     write_delta(box_score_spark, f"{DELTA_SILVER_PATH}_box_score")

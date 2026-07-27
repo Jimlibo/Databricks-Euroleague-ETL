@@ -23,6 +23,11 @@ def write_delta(table_df, table_name, mode = None):
     Writes the provided `table_df` to `table_name`. Uses 'overwrite' if the table doesn't exist, otherwise uses 'append'.
     When using 'append', drops duplicates after the final write.
     """
+    # ensure that table df contains at least one record before writing
+    if table_df is None:
+        print(f"Table is empty. Nothing to write into '{table_name}'.")
+        return
+
     # determine write mode if not specified
     if not mode:
         # extract spark sessioin from table df

@@ -65,8 +65,12 @@ class EuroleagueScrapper:
 
             # store season data to df
             for api in self.euroleague_apis:
-                df = self.spark.createDataFrame(season_api_rows[api])
-                write_delta(df, f"{DELTA_BRONZE_PATH}_{api.lower()}")
+                if len(season_api_rows[api]) > 0:
+                    df = self.spark.createDataFrame(season_api_rows[api])
+                    write_delta(df, f"{DELTA_BRONZE_PATH}_{api.lower()}", mode="overwrite")
+                else:
+                    print(f"Empty {api} data for {sc} season")
+
 
     def initialize_process(self, index, sc):
         
@@ -235,18 +239,18 @@ class EuroleagueScrapper:
             "team_b": team_b,
             "team_id_a": team_id_a,
             "team_id_b": team_id_b,
-            "coach_a": None,
-            "coach_b": None,
+            "coach_a": data.get("CoachA"),
+            "coach_b": data.get("CoachB"),
             "game_time": data.get("GameTime"),
-            "remaining_partial_time": data.get("RemainingTime"),
-            "referee_1": refs[0],
-            "referee_2": refs[1],
-            "referee_3": refs[2],
+            "remaining_partial_time": data.get("RemainingPartialTime"),
+            "referee_1": data.get("Referee1"),
+            "referee_2": data.get("Referee2"),
+            "referee_3": data.get("Referee3"),
             "stadium": data.get("Stadium"),
             "capacity": data.get("Capacity"),
-            "w_id": data.get("WinId"),
-            "fouls_a": data.get("FoulsA"),
-            "fouls_b": data.get("FoulsB"),
+            "w_id": data.get("wid"),
+            "fouls_a": data.get("FoultsA"),
+            "fouls_b": data.get("FoultsB"),
             "timeouts_a": data.get("TimeoutsA"),
             "timeouts_b": data.get("TimeoutsB"),
         }
@@ -267,7 +271,7 @@ class EuroleagueScrapper:
         # unique game_id
         game_id = f"{season}_{str(gamecode).zfill(3)}"
 
-        # extract teams
+        # extract teams - No longer supported from the api
         team_id_a = data.get("TeamA")
         team_id_b = data.get("TeamB")
         game = f"{team_id_a}-{team_id_b}"
@@ -279,6 +283,7 @@ class EuroleagueScrapper:
             "round": int(round_),
             "phase": phase.upper(),
             "season_code": season,
+            ########### No longer supported fields ###########
             "team_id_a": team_id_a,
             "team_id_b": team_id_b,
             "fast_break_points_a": data.get("FastBreakPointsA"),
@@ -287,6 +292,7 @@ class EuroleagueScrapper:
             "turnover_points_b": data.get("TurnoverPointsB"),
             "second_chance_points_a": data.get("SecondChancePointsA"),
             "second_chance_points_b": data.get("SecondChancePointsB"),
+            #########################################################
             "defensive_rebounds_a": data.get("DefensiveReboundsA"),
             "offensive_rebounds_a": data.get("OffensiveReboundsA"),
             "defensive_rebounds_b": data.get("DefensiveReboundsB"),
@@ -307,12 +313,14 @@ class EuroleagueScrapper:
             "points_bench_a": data.get("PointsBenchA"),
             "points_starters_b": data.get("PointsStartersB"),
             "points_bench_b": data.get("PointsBenchB"),
-            "max_a": data.get("MaxA"),
-            "min_a": data.get("MinA"),
-            "max_b": data.get("MaxB"),
-            "min_b": data.get("MinB"),
-            "max_lead_a": data.get("MaxLeadA"),
-            "max_lead_b": data.get("MaxLeadB"),
+            "max_a": data.get("maxA"),
+            "max_b": data.get("maxB"),
+            ##### no longer supported #####
+            "min_a": data.get("minA"),
+            "min_b": data.get("minB"),
+            ###############################
+            "max_lead_a": data.get("maxLeadA"),
+            "max_lead_b": data.get("maxLeadB"),
         }
 
         self.comparison_df_list.append(row)
@@ -378,7 +386,7 @@ class EuroleagueScrapper:
 
     def build_final_tables(self):
         return {
-            "box_score": pd.DataFrame(self.players_df_list),
-            "header": pd.DataFrame(self.games_df_list),
-            "comparison": pd.DataFrame(self.comparison_df_list),
+            "box_score": pd.DataFrame(self.players_df_list) if self.players_df_list else None,
+            "header": pd.DataFrame(self.games_df_list) if self.games_df_list else None,
+            "comparison": pd.DataFrame(self.comparison_df_list) if self.comparison_df_list else None,
         }
