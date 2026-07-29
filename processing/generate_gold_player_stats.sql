@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS workspace.euroleague.gold_player_stats AS
 SELECT
   `player_id`,
-  `player`,
+  FIRST(`player` IGNORE NULLS) AS player,
   `season_code`,
   ROUND(AVG(`points`), 2) AS points_average,
   ROUND(AVG(CASE WHEN `two_points_attempted` > 0 THEN `two_points_made` * 1.0 / `two_points_attempted` ELSE NULL END), 2) AS two_points_percentage,
@@ -18,14 +18,14 @@ FROM
 WHERE
   `phase` = 'REGULARSEASON'
 GROUP BY
-  `player_id`, `player`, `season_code`
+  `player_id`, `season_code`
 LIMIT 0;
 
 -- Insert data (append mode)
 WITH new_data AS (
   SELECT
     `player_id`,
-    `player`,
+    FIRST(`player` IGNORE NULLS) AS player,
     `season_code`,
     ROUND(AVG(`points`), 2) AS points_average,
     ROUND(AVG(CASE WHEN `two_points_attempted` > 0 THEN `two_points_made` * 1.0 / `two_points_attempted` ELSE NULL END), 2) AS two_points_percentage,
@@ -41,11 +41,11 @@ WITH new_data AS (
   WHERE
     `phase` = 'REGULARSEASON'
   GROUP BY
-    `player_id`, `player`, `season_code`
+    `player_id`, `season_code`
 )
 MERGE INTO workspace.euroleague.gold_player_stats g
 USING new_data n
-ON g.`player_id` = n.`player_id` AND g.`season_code` = n.`season_code` AND g.`player` = n.`player`
+ON g.`player_id` = n.`player_id` AND g.`season_code` = n.`season_code`
 WHEN MATCHED THEN
   UPDATE SET *
 WHEN NOT MATCHED THEN
