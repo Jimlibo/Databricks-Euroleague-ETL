@@ -2,7 +2,7 @@ import requests
 import json
 import os
 import pandas as pd
-from time import time
+from time import time, sleep
 from pyspark.sql import Row, SparkSession
 from config import RAW_PATH, DELTA_BRONZE_PATH
 from spark_utils import write_delta
@@ -43,13 +43,19 @@ class EuroleagueScrapper:
             # initialize basic variable of process
             process_start_time, season_end, meta_data_dict, gc = self.initialize_process(index, sc)
 
-            while not season_end:
-
+            while not season_end: 
                 # update the game_code counter
-                gc += 1 
+                gc += 1
 
                 # scrap APIs, load data and update info
-                meta_data_dict, api_rows = self.request_extract_load_update(gc, sc, process_start_time, meta_data_dict)
+                try:
+                    meta_data_dict, api_rows = self.request_extract_load_update(gc, sc, process_start_time, meta_data_dict)
+                except Exception as e:
+                    # If error 429 (too many requests) was thrown, wait for one minute and retry
+                    print(f"{e}! Waiting for 1 minute...")
+                    sleep(60)
+                    gc -= 1
+                    continue
 
                 # update season df rows
                 for api in self.euroleague_apis:
@@ -119,6 +125,11 @@ class EuroleagueScrapper:
             response = requests.get(url)
             response_status = response.status_code
 
+            # handle error 429 - too many requests
+            if response_status == 429:
+                raise Exception("Too many requests")
+            
+            # else, continue with the extraction process
             try:
                 # extract data
                 response_dict = response.json()
