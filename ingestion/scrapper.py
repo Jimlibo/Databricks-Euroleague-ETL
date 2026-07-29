@@ -220,16 +220,11 @@ class EuroleagueScrapper:
         date_raw = data.get("Date")
         date = "-".join(date_raw.split("/")[::-1]) if date_raw else None
 
-        # Referees split
-        refs = data.get("Referees", "").split(",")
-        refs = [r.strip() for r in refs] + [None] * 3
-
         # construct df row from api response
         row = {
             "game_id": game_id,
             "game": game,
             "date": date,
-            "time": data.get("LocalDate"),
             "round": int(round_),
             "phase": phase.upper(),
             "season_code": season,
@@ -271,28 +266,12 @@ class EuroleagueScrapper:
         # unique game_id
         game_id = f"{season}_{str(gamecode).zfill(3)}"
 
-        # extract teams - No longer supported from the api
-        team_id_a = data.get("TeamA")
-        team_id_b = data.get("TeamB")
-        game = f"{team_id_a}-{team_id_b}"
-
         # construct df row from api response
         row = {
             "game_id": game_id,
-            "game": game,
             "round": int(round_),
             "phase": phase.upper(),
             "season_code": season,
-            ########### No longer supported fields ###########
-            "team_id_a": team_id_a,
-            "team_id_b": team_id_b,
-            "fast_break_points_a": data.get("FastBreakPointsA"),
-            "fast_break_points_b": data.get("FastBreakPointsB"),
-            "turnover_points_a": data.get("TurnoverPointsA"),
-            "turnover_points_b": data.get("TurnoverPointsB"),
-            "second_chance_points_a": data.get("SecondChancePointsA"),
-            "second_chance_points_b": data.get("SecondChancePointsB"),
-            #########################################################
             "defensive_rebounds_a": data.get("DefensiveReboundsA"),
             "offensive_rebounds_a": data.get("OffensiveReboundsA"),
             "defensive_rebounds_b": data.get("DefensiveReboundsB"),
@@ -315,10 +294,6 @@ class EuroleagueScrapper:
             "points_bench_b": data.get("PointsBenchB"),
             "max_a": data.get("maxA"),
             "max_b": data.get("maxB"),
-            ##### no longer supported #####
-            "min_a": data.get("minA"),
-            "min_b": data.get("minB"),
-            ###############################
             "max_lead_a": data.get("maxLeadA"),
             "max_lead_b": data.get("maxLeadB"),
         }
