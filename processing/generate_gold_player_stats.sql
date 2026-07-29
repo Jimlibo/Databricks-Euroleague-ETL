@@ -45,7 +45,7 @@ WITH new_data AS (
 )
 MERGE INTO workspace.euroleague.gold_player_stats g
 USING new_data n
-ON g.`player_id` = n.`player_id` AND g.`season_code` = n.`season_code`
+ON g.`player_id` = n.`player_id` AND g.`season_code` = n.`season_code` AND g.`player` = n.`player`
 WHEN MATCHED THEN
   UPDATE SET *
 WHEN NOT MATCHED THEN
