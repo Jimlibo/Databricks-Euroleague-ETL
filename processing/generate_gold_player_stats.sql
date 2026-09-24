@@ -16,7 +16,7 @@ SELECT
 FROM
   `workspace`.`euroleague`.`silver_box_score`
 WHERE
-  `phase` = 'REGULARSEASON'
+  `phase` = 'REGULARSEASON' AND `is_playing` = 1
 GROUP BY
   `player_id`, `season_code`
 LIMIT 0;
@@ -39,7 +39,7 @@ WITH new_data AS (
   FROM
     `workspace`.`euroleague`.`silver_box_score`
   WHERE
-    `phase` = 'REGULARSEASON'
+    `phase` = 'REGULARSEASON' AND `is_playing` = 1
   GROUP BY
     `player_id`, `season_code`
 )
