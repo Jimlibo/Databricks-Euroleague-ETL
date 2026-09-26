@@ -13,7 +13,7 @@ WITH last_game_stats AS (
     `phase`,
     ROW_NUMBER() OVER (PARTITION BY `player_id` ORDER BY `game_id` DESC) AS rn
   FROM `workspace`.`euroleague`.`silver_box_score`
-  WHERE `is_playing` = 1
+  WHERE `is_playing` = 1 OR `minutes` != 'DNP'
 ),
 last_game AS (
   SELECT *
@@ -29,7 +29,7 @@ player_averages AS (
     AVG(`assists`) AS avg_assists,
     AVG(`steals`) AS avg_steals
   FROM `workspace`.`euroleague`.`silver_box_score`
-  WHERE `is_playing` = 1 AND `phase` = 'REGULARSEASON'
+  WHERE (`is_playing` = 1 OR `minutes` != 'DNP') AND `phase` = 'REGULARSEASON'
   GROUP BY `player_id`, `season_code`
 )
 SELECT
@@ -77,7 +77,7 @@ WITH last_game_stats AS (
     `phase`,
     ROW_NUMBER() OVER (PARTITION BY `player_id` ORDER BY `game_id` DESC) AS rn
   FROM `workspace`.`euroleague`.`silver_box_score`
-  WHERE `is_playing` = 1
+  WHERE `is_playing` = 1 OR `minutes` != 'DNP'
 ),
 last_game AS (
   SELECT *
@@ -93,7 +93,7 @@ player_averages AS (
     AVG(`assists`) AS avg_assists,
     AVG(`steals`) AS avg_steals
   FROM `workspace`.`euroleague`.`silver_box_score`
-  WHERE `is_playing` = 1 AND `phase` = 'REGULARSEASON'
+  WHERE (`is_playing` = 1 OR `minutes` != 'DNP') AND `phase` = 'REGULARSEASON'
   GROUP BY `player_id`, `season_code`
 ),
 new_data AS (
