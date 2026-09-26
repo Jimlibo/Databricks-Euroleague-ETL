@@ -49,7 +49,16 @@ SELECT
   ROUND(lg.`points` - pa.`avg_points`, 2) AS diff_points,
   ROUND(lg.`total_rebounds` - pa.`avg_total_rebounds`, 2) AS diff_total_rebounds,
   ROUND(lg.`assists` - pa.`avg_assists`, 2) AS diff_total_assists,
-  ROUND(lg.`steals` - pa.`avg_steals`, 2) AS diff_total_steals
+  ROUND(lg.`steals` - pa.`avg_steals`, 2) AS diff_total_steals,
+  ROUND(
+    try_divide(
+      (lg.`points` * pa.`avg_points` + lg.`total_rebounds` * pa.`avg_total_rebounds` + lg.`assists` * pa.`avg_assists` + lg.`steals` * pa.`avg_steals`),
+      (
+        SQRT(POWER(lg.`points`, 2) + POWER(lg.`total_rebounds`, 2) + POWER(lg.`assists`, 2) + POWER(lg.`steals`, 2)) *
+        SQRT(POWER(pa.`avg_points`, 2) + POWER(pa.`avg_total_rebounds`, 2) + POWER(pa.`avg_assists`, 2) + POWER(pa.`avg_steals`, 2))
+      )
+    ), 4
+  ) AS season_avg_similarity
 FROM last_game lg
 JOIN player_averages pa ON lg.`player_id` = pa.`player_id` AND lg.`season_code` = pa.`season_code`
 LIMIT 0;
@@ -105,7 +114,16 @@ new_data AS (
     ROUND(lg.`points` - pa.`avg_points`, 2) AS diff_points,
     ROUND(lg.`total_rebounds` - pa.`avg_total_rebounds`, 2) AS diff_total_rebounds,
     ROUND(lg.`assists` - pa.`avg_assists`, 2) AS diff_total_assists,
-    ROUND(lg.`steals` - pa.`avg_steals`, 2) AS diff_total_steals
+    ROUND(lg.`steals` - pa.`avg_steals`, 2) AS diff_total_steals,
+    ROUND(
+    try_divide(
+      (lg.`points` * pa.`avg_points` + lg.`total_rebounds` * pa.`avg_total_rebounds` + lg.`assists` * pa.`avg_assists` + lg.`steals` * pa.`avg_steals`),
+      (
+        SQRT(POWER(lg.`points`, 2) + POWER(lg.`total_rebounds`, 2) + POWER(lg.`assists`, 2) + POWER(lg.`steals`, 2)) *
+        SQRT(POWER(pa.`avg_points`, 2) + POWER(pa.`avg_total_rebounds`, 2) + POWER(pa.`avg_assists`, 2) + POWER(pa.`avg_steals`, 2))
+      )
+    ), 4
+  ) AS season_avg_similarity
   FROM last_game lg
   JOIN player_averages pa ON lg.`player_id` = pa.`player_id` AND lg.`season_code` = pa.`season_code`
 )
