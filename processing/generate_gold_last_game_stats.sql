@@ -2,18 +2,20 @@
 CREATE TABLE IF NOT EXISTS workspace.euroleague.gold_last_game_stats AS
 WITH last_game_stats AS (
   SELECT
-    `player_id`,
-    `player`,
-    `points`,
-    `total_rebounds`,
-    `assists`,
-    `steals`,
-    `season_code`,
-    `game_id`,
-    `phase`,
-    ROW_NUMBER() OVER (PARTITION BY `player_id` ORDER BY `game_id` DESC) AS rn
-  FROM `workspace`.`euroleague`.`silver_box_score`
-  WHERE `is_playing` = 1 OR `minutes` != 'DNP'
+    s.`player_id`,
+    s.`player`,
+    s.`points`,
+    s.`total_rebounds`,
+    s.`assists`,
+    s.`steals`,
+    s.`season_code`,
+    s.`game_id`,
+    s.`phase`,
+    h.`date`,
+    ROW_NUMBER() OVER (PARTITION BY s.`player_id` ORDER BY s.`game_id` DESC) AS rn
+  FROM `workspace`.`euroleague`.`silver_box_score` s
+  LEFT JOIN `workspace`.`euroleague`.`silver_header` h ON s.`game_id` = h.`game_id`
+  WHERE s.`is_playing` = 1 OR s.`minutes` != 'DNP'
 ),
 last_game AS (
   SELECT *
@@ -38,6 +40,7 @@ SELECT
   lg.`season_code`,
   lg.`game_id` AS last_game_id,
   lg.`phase`,
+  lg.`date` AS last_game_date,
   lg.`points` AS last_total_points,
   lg.`total_rebounds` AS last_total_rebounds,
   lg.`assists` AS last_total_assists,
@@ -66,18 +69,20 @@ LIMIT 0;
 -- Insert data (upsert by player_id)
 WITH last_game_stats AS (
   SELECT
-    `player_id`,
-    `player`,
-    `points`,
-    `total_rebounds`,
-    `assists`,
-    `steals`,
-    `season_code`,
-    `game_id`,
-    `phase`,
-    ROW_NUMBER() OVER (PARTITION BY `player_id` ORDER BY `game_id` DESC) AS rn
-  FROM `workspace`.`euroleague`.`silver_box_score`
-  WHERE `is_playing` = 1 OR `minutes` != 'DNP'
+    s.`player_id`,
+    s.`player`,
+    s.`points`,
+    s.`total_rebounds`,
+    s.`assists`,
+    s.`steals`,
+    s.`season_code`,
+    s.`game_id`,
+    s.`phase`,
+    h.`date`,
+    ROW_NUMBER() OVER (PARTITION BY s.`player_id` ORDER BY s.`game_id` DESC) AS rn
+  FROM `workspace`.`euroleague`.`silver_box_score` s
+  LEFT JOIN `workspace`.`euroleague`.`silver_header` h ON s.`game_id` = h.`game_id`
+  WHERE s.`is_playing` = 1 OR s.`minutes` != 'DNP'
 ),
 last_game AS (
   SELECT *
@@ -103,6 +108,7 @@ new_data AS (
     lg.`season_code`,
     lg.`game_id` AS last_game_id,
     lg.`phase`,
+    lg.`date` AS last_game_date,
     lg.`points` AS last_total_points,
     lg.`total_rebounds` AS last_total_rebounds,
     lg.`assists` AS last_total_assists,
