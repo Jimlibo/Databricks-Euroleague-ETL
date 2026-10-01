@@ -1,0 +1,420 @@
+{
+  "datasets": [
+    {
+      "name": "similarity_top5_last",
+      "displayName": "Top 5 Lowest Similarity",
+      "queryLines": [
+        "SELECT\n",
+        "  `player_id`,\n",
+        "  CONCAT(`player`, ' (', `last_game_date`, ')') AS player_display,\n",
+        "  `player`,\n",
+        "  `season_code`,\n",
+        "  `season_avg_similarity`,\n",
+        "  `last_game_date`\n",
+        "FROM\n",
+        "  `gold_last_game_stats`\n",
+        "WHERE\n",
+        "  `season_avg_similarity` IS NOT NULL\n",
+        "  AND CAST(`last_game_date` AS DATE) >= DATE_SUB(CURRENT_DATE(), 7)\n",
+        "  AND CAST(`last_game_date` AS DATE) <= CURRENT_DATE()\n",
+        "ORDER BY\n",
+        "  `season_avg_similarity` ASC\n",
+        "LIMIT 5"
+      ],
+      "catalog": "workspace",
+      "schema": "euroleague"
+    },
+    {
+      "name": "worst_diff_top5",
+      "displayName": "Worst 5 by Total Diff",
+      "queryLines": [
+        "SELECT\n",
+        "  `player_id`,\n",
+        "  CONCAT(`player`, ' (', `last_game_date`, ')') AS player_display,\n",
+        "  `player`,\n",
+        "  `season_code`,\n",
+        "  (\n",
+        "    COALESCE(`diff_points`, 0)\n",
+        "      + COALESCE(`diff_total_rebounds`, 0)\n",
+        "      + COALESCE(`diff_total_assists`, 0)\n",
+        "      + COALESCE(`diff_total_steals`, 0)\n",
+        "  ) AS total_diff,\n",
+        "  `last_game_date`\n",
+        "FROM\n",
+        "  `gold_last_game_stats`\n",
+        "WHERE\n",
+        "  CAST(`last_game_date` AS DATE) >= DATE_SUB(CURRENT_DATE(), 7)\n",
+        "  AND CAST(`last_game_date` AS DATE) <= CURRENT_DATE()\n",
+        "ORDER BY\n",
+        "  total_diff ASC\n",
+        "LIMIT 5"
+      ],
+      "catalog": "workspace",
+      "schema": "euroleague"
+    },
+    {
+      "name": "best_diff_top5",
+      "displayName": "Best 5 by Total Diff",
+      "queryLines": [
+        "SELECT\n",
+        "  `player_id`,\n",
+        "  CONCAT(`player`, ' (', `last_game_date`, ')') AS player_display,\n",
+        "  `player`,\n",
+        "  `season_code`,\n",
+        "  (\n",
+        "    COALESCE(`diff_points`, 0)\n",
+        "      + COALESCE(`diff_total_rebounds`, 0)\n",
+        "      + COALESCE(`diff_total_assists`, 0)\n",
+        "      + COALESCE(`diff_total_steals`, 0)\n",
+        "  ) AS total_diff,\n",
+        "  `last_game_date`\n",
+        "FROM\n",
+        "  `gold_last_game_stats`\n",
+        "WHERE\n",
+        "  CAST(`last_game_date` AS DATE) >= DATE_SUB(CURRENT_DATE(), 7)\n",
+        "  AND CAST(`last_game_date` AS DATE) <= CURRENT_DATE()\n",
+        "ORDER BY\n",
+        "  total_diff DESC\n",
+        "LIMIT 5"
+      ],
+      "catalog": "workspace",
+      "schema": "euroleague"
+    },
+    {
+      "name": "game_dates_options",
+      "displayName": "Available Game Dates",
+      "queryLines": [
+        "SELECT DISTINCT\n",
+        "  `last_game_date`\n",
+        "FROM\n",
+        "  `gold_last_game_stats`\n",
+        "WHERE\n",
+        "  `last_game_date` IS NOT NULL\n",
+        "ORDER BY\n",
+        "  `last_game_date`"
+      ],
+      "catalog": "workspace",
+      "schema": "euroleague"
+    }
+  ],
+  "pages": [
+    {
+      "name": "e5999829",
+      "displayName": "dashboard",
+      "layout": [
+        {
+          "widget": {
+            "name": "similarity_top5_last_week",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "similarity_top5_last",
+                  "fields": [
+                    {
+                      "name": "last_game_date",
+                      "expression": "`last_game_date`"
+                    },
+                    {
+                      "name": "season_avg_similarity",
+                      "expression": "`season_avg_similarity`"
+                    },
+                    {
+                      "name": "player_display",
+                      "expression": "`player_display`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "<span style=\"font-weight: 700;\">Top 5 Outliers</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Top 5 players furthest from their season average",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  "#15AFDD"
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "season_avg_similarity",
+                  "displayName": "Similarity Score",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "player_display",
+                  "displayName": "Player (Last Game Date)",
+                  "scale": {
+                    "type": "categorical",
+                    "categorySize": {
+                      "type": "number-of-categories",
+                      "number": 5
+                    },
+                    "sort": {
+                      "by": "x"
+                    }
+                  }
+                },
+                "label": {
+                  "show": true
+                },
+                "extra": [
+                  {
+                    "fieldName": "last_game_date",
+                    "displayName": "Last Game Date"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 12,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "worst_diff_top5_last_week",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "worst_diff_top5",
+                  "fields": [
+                    {
+                      "name": "last_game_date",
+                      "expression": "`last_game_date`"
+                    },
+                    {
+                      "name": "total_diff",
+                      "expression": "`total_diff`"
+                    },
+                    {
+                      "name": "player_display",
+                      "expression": "`player_display`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "<span style=\"font-weight: 700;\">Worst 5 Players </span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Based on total stats difference from season average",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  "#C85070"
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "total_diff",
+                  "displayName": "Total Diff (Points + Rebounds + Assists + Steals)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "player_display",
+                  "displayName": "Player (Last Game Date)",
+                  "scale": {
+                    "type": "categorical",
+                    "categorySize": {
+                      "type": "number-of-categories",
+                      "number": 5
+                    },
+                    "sort": {
+                      "by": "x"
+                    }
+                  }
+                },
+                "label": {
+                  "show": true
+                },
+                "extra": [
+                  {
+                    "fieldName": "last_game_date",
+                    "displayName": "Last Game Date"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "best_diff_top5_last_week",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "best_diff_top5",
+                  "fields": [
+                    {
+                      "name": "last_game_date",
+                      "expression": "`last_game_date`"
+                    },
+                    {
+                      "name": "total_diff",
+                      "expression": "`total_diff`"
+                    },
+                    {
+                      "name": "player_display",
+                      "expression": "`player_display`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "<span style=\"font-weight: 700;\">Best 5 Players</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Based on total stats difference from season average",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  "#52A870"
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "total_diff",
+                  "displayName": "Total Diff (Points + Rebounds + Assists + Steals)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "player_display",
+                  "displayName": "Player (Last Game Date)",
+                  "scale": {
+                    "type": "categorical",
+                    "categorySize": {
+                      "type": "number-of-categories",
+                      "number": 5
+                    },
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                },
+                "label": {
+                  "show": true
+                },
+                "extra": [
+                  {
+                    "fieldName": "last_game_date",
+                    "displayName": "Last Game Date"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "dashboard_overview",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# 🏀 Euroleague Player Performance — Last Week Overview\n",
+                "\n",
+                "This dashboard analyzes **Euroleague players** whose last game occurred within the **past 7 days**. It answers three key questions:\n",
+                "\n",
+                "| Chart | What it shows |\n",
+                "| --- | --- |\n",
+                "| **Top 5 Outliers** | Players with the *lowest* season-average similarity — meaning their last game deviated the most from their typical performance. A lower score = bigger deviation. |\n",
+                "| **Worst 5 Players** | Players with the *most negative* total diff — meaning they performed well below their season average across points, rebounds, assists, and steals. |\n",
+                "| **Best 5 Players** | Players with the *most positive* total diff — meaning they outperformed their season averages. |\n",
+                "\n",
+                "> Each player's **last game date** is shown in parentheses next to their name for quick reference.\n",
+                "\n",
+                "*Data source: `gold_last_game_stats` table. Stats compared: points, rebounds, assists, and steals.*"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "b1de176b",
+      "displayName": "Global Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}

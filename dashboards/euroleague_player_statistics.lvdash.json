@@ -1,0 +1,1278 @@
+{
+  "datasets": [
+    {
+      "name": "ee0a0ecb",
+      "displayName": "Player Statistics",
+      "queryLines": [
+        "WITH overall_averages AS (\n",
+        "  SELECT\n",
+        "    AVG(`points`) AS avg_points_all,\n",
+        "    AVG(`offensive_rebounds` + `defensive_rebounds`) AS avg_rebounds_all,\n",
+        "    AVG(`assists`) AS avg_assists_all,\n",
+        "    AVG(`steals`) AS avg_steals_all\n",
+        "  FROM\n",
+        "    `workspace`.`euroleague`.`silver_box_score`\n",
+        "  WHERE\n",
+        "    `phase` = 'REGULARSEASON'\n",
+        ")\n",
+        "SELECT\n",
+        "  `player_id`,\n",
+        "  `player`,\n",
+        "  `season_code`,\n",
+        "  `points_average`,\n",
+        "  `two_points_percentage`,\n",
+        "  `three_points_percentage`,\n",
+        "  `free_throw_percentage`,\n",
+        "  `average_offensive_rebounds`,\n",
+        "  `average_defensive_rebounds`,\n",
+        "  `average_total_rebounds`,\n",
+        "  `average_assists`,\n",
+        "  `average_steals`,\n",
+        "  oa.avg_points_all,\n",
+        "  oa.avg_rebounds_all,\n",
+        "  oa.avg_assists_all,\n",
+        "  oa.avg_steals_all\n",
+        "FROM\n",
+        "  `workspace`.`euroleague`.`gold_player_stats` CROSS JOIN overall_averages oa"
+      ],
+      "catalog": "workspace",
+      "schema": "euroleague"
+    },
+    {
+      "name": "rebounds_breakdown",
+      "displayName": "Rebounds Breakdown",
+      "queryLines": [
+        "SELECT\n",
+        "  `player_id`,\n",
+        "  `player`,\n",
+        "  `season_code`,\n",
+        "  'Offensive' AS rebound_type,\n",
+        "  `average_offensive_rebounds` AS average_rebounds\n",
+        "FROM\n",
+        "  `workspace`.`euroleague`.`gold_player_stats`\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  `player_id`,\n",
+        "  `player`,\n",
+        "  `season_code`,\n",
+        "  'Defensive' AS rebound_type,\n",
+        "  `average_defensive_rebounds` AS average_rebounds\n",
+        "FROM\n",
+        "  `workspace`.`euroleague`.`gold_player_stats`"
+      ],
+      "catalog": "workspace",
+      "schema": "euroleague"
+    },
+    {
+      "name": "shooting_percentages",
+      "displayName": "Shooting Percentages",
+      "queryLines": [
+        "WITH shot_data AS (\n",
+        "  SELECT\n",
+        "    `player_id`,\n",
+        "    `player`,\n",
+        "    `season_code`,\n",
+        "    1 AS sort_order,\n",
+        "    'Free Throw' AS shot_type,\n",
+        "    `free_throw_percentage` AS percentage\n",
+        "  FROM\n",
+        "    `workspace`.`euroleague`.`gold_player_stats`\n",
+        "  UNION ALL\n",
+        "  SELECT\n",
+        "    `player_id`,\n",
+        "    `player`,\n",
+        "    `season_code`,\n",
+        "    2 AS sort_order,\n",
+        "    'Two-Point' AS shot_type,\n",
+        "    `two_points_percentage` AS percentage\n",
+        "  FROM\n",
+        "    `workspace`.`euroleague`.`gold_player_stats`\n",
+        "  UNION ALL\n",
+        "  SELECT\n",
+        "    `player_id`,\n",
+        "    `player`,\n",
+        "    `season_code`,\n",
+        "    3 AS sort_order,\n",
+        "    'Three-Point' AS shot_type,\n",
+        "    `three_points_percentage` AS percentage\n",
+        "  FROM\n",
+        "    `workspace`.`euroleague`.`gold_player_stats`\n",
+        ")\n",
+        "SELECT\n",
+        "  `player_id`,\n",
+        "  `player`,\n",
+        "  `season_code`,\n",
+        "  `sort_order`,\n",
+        "  `shot_type`,\n",
+        "  `percentage`,\n",
+        "  CASE\n",
+        "    WHEN `percentage` < 0.35 THEN 'Low'\n",
+        "    WHEN\n",
+        "      `percentage` >= 0.35\n",
+        "      AND `percentage` <= 0.75\n",
+        "    THEN\n",
+        "      'Medium'\n",
+        "    ELSE 'High'\n",
+        "  END AS performance_level\n",
+        "FROM\n",
+        "  shot_data"
+      ],
+      "catalog": "workspace",
+      "schema": "euroleague"
+    },
+    {
+      "name": "10b6079e",
+      "displayName": "Last Game Stats",
+      "queryLines": [
+        "SELECT \r\n",
+        "    *\r\n",
+        "FROM \r\n",
+        "    `euroleague`.`gold_last_game_stats`"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "45be8ece",
+      "displayName": "Dashboard",
+      "layout": [
+        {
+          "widget": {
+            "name": "season_filter",
+            "queries": [
+              {
+                "name": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f185a5d2a318118c984fe451cf77a7_season_code",
+                "query": {
+                  "datasetName": "ee0a0ecb",
+                  "fields": [
+                    {
+                      "name": "season_code",
+                      "expression": "`season_code`"
+                    },
+                    {
+                      "name": "season_code_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f185a6c86010ab86b2c33f1e38115b_season_code",
+                "query": {
+                  "datasetName": "rebounds_breakdown",
+                  "fields": [
+                    {
+                      "name": "season_code",
+                      "expression": "`season_code`"
+                    },
+                    {
+                      "name": "season_code_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f185a6c8aa16d2bf8c7e87cb2fafc7_season_code",
+                "query": {
+                  "datasetName": "shooting_percentages",
+                  "fields": [
+                    {
+                      "name": "season_code",
+                      "expression": "`season_code`"
+                    },
+                    {
+                      "name": "season_code_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f1b7f804551b2a8ef1d08525599c2d_season_code",
+                "query": {
+                  "datasetName": "10b6079e",
+                  "fields": [
+                    {
+                      "name": "season_code",
+                      "expression": "`season_code`"
+                    },
+                    {
+                      "name": "season_code_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "disallowAll": false,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Season",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "season_code",
+                    "queryName": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f185a5d2a318118c984fe451cf77a7_season_code"
+                  },
+                  {
+                    "fieldName": "season_code",
+                    "queryName": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f185a6c86010ab86b2c33f1e38115b_season_code"
+                  },
+                  {
+                    "fieldName": "season_code",
+                    "queryName": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f185a6c8aa16d2bf8c7e87cb2fafc7_season_code"
+                  },
+                  {
+                    "fieldName": "season_code",
+                    "queryName": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f1b7f804551b2a8ef1d08525599c2d_season_code"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "player_filter",
+            "queries": [
+              {
+                "name": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f185a5d2a318118c984fe451cf77a7_player",
+                "query": {
+                  "datasetName": "ee0a0ecb",
+                  "fields": [
+                    {
+                      "name": "player",
+                      "expression": "`player`"
+                    },
+                    {
+                      "name": "player_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f185a6c86010ab86b2c33f1e38115b_player",
+                "query": {
+                  "datasetName": "rebounds_breakdown",
+                  "fields": [
+                    {
+                      "name": "player",
+                      "expression": "`player`"
+                    },
+                    {
+                      "name": "player_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f185a6c8aa16d2bf8c7e87cb2fafc7_player",
+                "query": {
+                  "datasetName": "shooting_percentages",
+                  "fields": [
+                    {
+                      "name": "player",
+                      "expression": "`player`"
+                    },
+                    {
+                      "name": "player_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f1b7f804551b2a8ef1d08525599c2d_player",
+                "query": {
+                  "datasetName": "10b6079e",
+                  "fields": [
+                    {
+                      "name": "player",
+                      "expression": "`player`"
+                    },
+                    {
+                      "name": "player_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Player",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "player",
+                    "queryName": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f185a5d2a318118c984fe451cf77a7_player"
+                  },
+                  {
+                    "fieldName": "player",
+                    "queryName": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f185a6c86010ab86b2c33f1e38115b_player"
+                  },
+                  {
+                    "fieldName": "player",
+                    "queryName": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f185a6c8aa16d2bf8c7e87cb2fafc7_player"
+                  },
+                  {
+                    "fieldName": "player",
+                    "queryName": "dashboards/01f185a5cd3c1806b8f39f6e8f385493/datasets/01f1b7f804551b2a8ef1d08525599c2d_player"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 6,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "points_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ee0a0ecb",
+                  "fields": [
+                    {
+                      "name": "first(avg_points_all)",
+                      "expression": "FIRST(`avg_points_all`)"
+                    },
+                    {
+                      "name": "avg(points_average)",
+                      "expression": "AVG(`points_average`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": "Average Points per Game",
+                "description": "Comparison with league average"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(points_average)",
+                  "rowNumber": 0
+                },
+                "target": {
+                  "fieldName": "first(avg_points_all)",
+                  "change": {
+                    "type": "numeric",
+                    "style": {
+                      "rules": [
+                        {
+                          "condition": {
+                            "operator": "<"
+                          },
+                          "foregroundColor": {
+                            "themeColorType": "visualizationColors",
+                            "position": 4
+                          }
+                        },
+                        {
+                          "condition": {
+                            "operator": ">="
+                          },
+                          "foregroundColor": "#00A972"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "rebounds_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ee0a0ecb",
+                  "fields": [
+                    {
+                      "name": "first(avg_rebounds_all)",
+                      "expression": "FIRST(`avg_rebounds_all`)"
+                    },
+                    {
+                      "name": "avg(average_total_rebounds)",
+                      "expression": "AVG(`average_total_rebounds`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Average Rebounds per Game",
+                "showTitle": true,
+                "showDescription": true,
+                "description": "Comparison with league average"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(average_total_rebounds)",
+                  "rowNumber": 0
+                },
+                "target": {
+                  "fieldName": "first(avg_rebounds_all)",
+                  "change": {
+                    "type": "numeric",
+                    "style": {
+                      "rules": [
+                        {
+                          "condition": {
+                            "operator": "<"
+                          },
+                          "foregroundColor": {
+                            "themeColorType": "visualizationColors",
+                            "position": 4
+                          }
+                        },
+                        {
+                          "condition": {
+                            "operator": ">="
+                          },
+                          "foregroundColor": "#00A972"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 5,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "assists_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ee0a0ecb",
+                  "fields": [
+                    {
+                      "name": "first(avg_assists_all)",
+                      "expression": "FIRST(`avg_assists_all`)"
+                    },
+                    {
+                      "name": "avg(average_assists)",
+                      "expression": "AVG(`average_assists`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Average Assists per Game",
+                "showTitle": true,
+                "showDescription": true,
+                "description": "Comparison with league average"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(average_assists)",
+                  "rowNumber": 0
+                },
+                "target": {
+                  "fieldName": "first(avg_assists_all)",
+                  "change": {
+                    "type": "numeric",
+                    "style": {
+                      "rules": [
+                        {
+                          "condition": {
+                            "operator": "<"
+                          },
+                          "foregroundColor": {
+                            "themeColorType": "visualizationColors",
+                            "position": 4
+                          }
+                        },
+                        {
+                          "condition": {
+                            "operator": ">="
+                          },
+                          "foregroundColor": "#00A972"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 5,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "steals_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ee0a0ecb",
+                  "fields": [
+                    {
+                      "name": "first(avg_steals_all)",
+                      "expression": "FIRST(`avg_steals_all`)"
+                    },
+                    {
+                      "name": "avg(average_steals)",
+                      "expression": "AVG(`average_steals`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Average Steals per Game",
+                "showTitle": true,
+                "showDescription": true,
+                "description": "Comparison with league average"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(average_steals)",
+                  "rowNumber": 0
+                },
+                "target": {
+                  "fieldName": "first(avg_steals_all)",
+                  "change": {
+                    "type": "numeric",
+                    "style": {
+                      "rules": [
+                        {
+                          "condition": {
+                            "operator": "<"
+                          },
+                          "foregroundColor": {
+                            "themeColorType": "visualizationColors",
+                            "position": 4
+                          }
+                        },
+                        {
+                          "condition": {
+                            "operator": ">="
+                          },
+                          "foregroundColor": "#00A972"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 5,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "rebounds_pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rebounds_breakdown",
+                  "fields": [
+                    {
+                      "name": "sum(average_rebounds)",
+                      "expression": "SUM(`average_rebounds`)"
+                    },
+                    {
+                      "name": "rebound_type",
+                      "expression": "`rebound_type`"
+                    },
+                    {
+                      "name": "average_rebounds",
+                      "expression": "`average_rebounds`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "title": "Rebounds Breakdown",
+                "showTitle": true,
+                "showDescription": true,
+                "description": "Breakdown of average rebound per game"
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(average_rebounds)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Rebounds per Game"
+                },
+                "color": {
+                  "fieldName": "rebound_type",
+                  "legend": {
+                    "position": "bottom",
+                    "title": "Rebound Type"
+                  },
+                  "displayName": "Rebound Type",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Offensive",
+                        "color": "#FF6B35"
+                      },
+                      {
+                        "value": "Defensive",
+                        "color": "#004E89"
+                      }
+                    ]
+                  }
+                },
+                "label": {
+                  "show": true,
+                  "text": {
+                    "fieldName": "average_rebounds",
+                    "displayName": "Rebounds per Game"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "shooting_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "shooting_percentages",
+                  "fields": [
+                    {
+                      "name": "performance_level",
+                      "expression": "`performance_level`"
+                    },
+                    {
+                      "name": "shot_type",
+                      "expression": "`shot_type`"
+                    },
+                    {
+                      "name": "avg(percentage)",
+                      "expression": "AVG(`percentage`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Shooting Accuracy",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Average shooting accuracy across different shot types",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "shot_type",
+                  "axis": {
+                    "hideLabels": false
+                  },
+                  "displayName": "Shot type",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "Free Throw",
+                        "Two-Point",
+                        "Three-Point"
+                      ]
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(percentage)",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "axis": {
+                    "title": "Accuracy"
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "performance_level",
+                  "legend": {
+                    "position": "bottom",
+                    "title": "Accuracy Level",
+                    "hide": false
+                  },
+                  "displayName": "Performance",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Low",
+                        "color": "#9D0208"
+                      },
+                      {
+                        "value": "Medium",
+                        "color": "#FF6B35"
+                      },
+                      {
+                        "value": "High",
+                        "color": "#004E89"
+                      }
+                    ],
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "High",
+                        "Medium",
+                        "Low"
+                      ]
+                    }
+                  }
+                },
+                "label": {
+                  "show": true,
+                  "showTotal": false
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 9,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "header_text",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Euroleague Player Statistics Dashboard📊\n",
+                "\n",
+                "This dashboard provides comprehensive performance analytics for Euroleague basketball players during regular season games. Filter by season and player to explore individual statistics, including scoring averages, shooting accuracy across different shot types, and rebounds breakdown."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "last_game_header",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Last Game Performance\n",
+                "\n",
+                "Comparison of the player's last game stats vs their season average"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "last_game_points",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "10b6079e",
+                  "fields": [
+                    {
+                      "name": "avg_total_points",
+                      "expression": "`avg_total_points`"
+                    },
+                    {
+                      "name": "last_total_points",
+                      "expression": "`last_total_points`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Last Game Points",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Difference from player season average",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "last_total_points"
+                },
+                "target": {
+                  "fieldName": "avg_total_points",
+                  "change": {
+                    "type": "numeric",
+                    "style": {
+                      "rules": [
+                        {
+                          "condition": {
+                            "operator": "<"
+                          },
+                          "foregroundColor": {
+                            "themeColorType": "visualizationColors",
+                            "position": 4
+                          }
+                        },
+                        {
+                          "condition": {
+                            "operator": ">="
+                          },
+                          "foregroundColor": "#00A972"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 17,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "last_game_rebounds",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "10b6079e",
+                  "fields": [
+                    {
+                      "name": "avg_total_rebounds",
+                      "expression": "`avg_total_rebounds`"
+                    },
+                    {
+                      "name": "last_total_rebounds",
+                      "expression": "`last_total_rebounds`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Last Game Rebounds",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Difference from player season average",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "last_total_rebounds"
+                },
+                "target": {
+                  "fieldName": "avg_total_rebounds",
+                  "change": {
+                    "type": "numeric",
+                    "style": {
+                      "rules": [
+                        {
+                          "condition": {
+                            "operator": "<"
+                          },
+                          "foregroundColor": {
+                            "themeColorType": "visualizationColors",
+                            "position": 4
+                          }
+                        },
+                        {
+                          "condition": {
+                            "operator": ">="
+                          },
+                          "foregroundColor": "#00A972"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 17,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "last_game_assists",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "10b6079e",
+                  "fields": [
+                    {
+                      "name": "avg_total_assists",
+                      "expression": "`avg_total_assists`"
+                    },
+                    {
+                      "name": "last_total_assists",
+                      "expression": "`last_total_assists`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Last Game Assists",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Difference from player season average",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "last_total_assists"
+                },
+                "target": {
+                  "fieldName": "avg_total_assists",
+                  "change": {
+                    "type": "numeric",
+                    "style": {
+                      "rules": [
+                        {
+                          "condition": {
+                            "operator": "<"
+                          },
+                          "foregroundColor": {
+                            "themeColorType": "visualizationColors",
+                            "position": 4
+                          }
+                        },
+                        {
+                          "condition": {
+                            "operator": ">="
+                          },
+                          "foregroundColor": "#00A972"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 17,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "last_game_steals",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "10b6079e",
+                  "fields": [
+                    {
+                      "name": "avg_total_steals",
+                      "expression": "`avg_total_steals`"
+                    },
+                    {
+                      "name": "last_total_steals",
+                      "expression": "`last_total_steals`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Last Game Steals",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Difference from player season average",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "last_total_steals"
+                },
+                "target": {
+                  "fieldName": "avg_total_steals",
+                  "change": {
+                    "type": "numeric",
+                    "style": {
+                      "rules": [
+                        {
+                          "condition": {
+                            "operator": "<"
+                          },
+                          "foregroundColor": {
+                            "themeColorType": "visualizationColors",
+                            "position": 4
+                          }
+                        },
+                        {
+                          "condition": {
+                            "operator": ">="
+                          },
+                          "foregroundColor": "#00A972"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 17,
+            "width": 3,
+            "height": 4
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "4e7b1536",
+      "displayName": "Global Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#1E1E1E"
+      },
+      "widgetBorderColor": {
+        "light": "#E0E0E0",
+        "dark": "#3A3A3A"
+      },
+      "selectionColor": {
+        "light": "#0066CC",
+        "dark": "#4DA3FF"
+      },
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED",
+      "widgetPadding": 16,
+      "widgetMargin": 12,
+      "widgetCornerRadius": 12,
+      "widgetShadow": 15,
+      "fontSettings": {
+        "base": {
+          "fontFamily": "Inter",
+          "fontSize": 13
+        },
+        "widgetTitle": {
+          "fontFamily": "Poppins",
+          "textCase": "TEXT_CASE_UNSPECIFIED",
+          "fontSize": 16,
+          "fontWeight": 600
+        },
+        "fieldTitle": {
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "fontWeight": 500
+        },
+        "fieldValue": {
+          "fontFamily": "Inter",
+          "fontSize": 14,
+          "fontWeight": 400
+        }
+      }
+    },
+    "applyModeEnabled": false
+  }
+}
